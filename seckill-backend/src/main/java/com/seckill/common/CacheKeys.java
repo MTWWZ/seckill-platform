@@ -26,6 +26,15 @@ public final class CacheKeys {
     }
 
     /**
+     * 参与过某活动的用户集合：seckill:activity:users:{activityId}
+     * <p>
+     * 用 Set 存 userId，配合 Lua 的 SISMEMBER 实现"一人一单"。
+     */
+    public static String activityUsers(Long activityId) {
+        return "seckill:activity:users:" + activityId;
+    }
+
+    /**
      * 空值占位符
      * <p>
      * 查询结果为空时写入 Redis，用于防缓存穿透：
