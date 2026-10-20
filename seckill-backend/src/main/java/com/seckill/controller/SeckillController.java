@@ -1,5 +1,6 @@
 package com.seckill.controller;
 
+import com.seckill.annotation.RateLimit;
 import com.seckill.common.Result;
 import com.seckill.service.SeckillService;
 import com.seckill.vo.SeckillOrderVO;
@@ -26,7 +27,9 @@ public class SeckillController {
 
     private final SeckillService seckillService;
 
-    /** 抢购（异步下单：立刻返回"排队中"，订单由消费者异步生成） */
+    /** 抢购（异步下单：立刻返回"排队中"，订单由消费者异步生成）
+     *  限流：同一用户 1 秒内最多 5 次请求，挡住脚本刷单 */
+    @RateLimit(type = RateLimit.Type.USER, window = 1, count = 5)
     @PostMapping("/order/{activityId}")
     public Result<SeckillResultVO> seckill(@PathVariable Long activityId) {
         return Result.success(seckillService.seckill(activityId));
