@@ -16,6 +16,16 @@ public final class CacheKeys {
     }
 
     /**
+     * 秒杀活动库存：seckill:activity:stock:{activityId}
+     * <p>
+     * 活动开始前把数据库里的活动库存"预热"到这里，
+     * 抢购时直接扣 Redis，避免高并发下所有请求都去行锁竞争数据库。
+     */
+    public static String activityStock(Long activityId) {
+        return "seckill:activity:stock:" + activityId;
+    }
+
+    /**
      * 空值占位符
      * <p>
      * 查询结果为空时写入 Redis，用于防缓存穿透：

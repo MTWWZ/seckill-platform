@@ -27,6 +27,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         // 连通性自检接口，不需要登录
                         "/api/redis/**",
                         // 商品浏览类接口，游客可见
-                        "/api/goods/**");
+                        "/api/goods/**",
+                        // 秒杀活动浏览类接口，游客可见
+                        "/api/seckill/activity/**");
     }
 }

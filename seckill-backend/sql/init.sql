@@ -121,3 +121,13 @@ INSERT INTO `t_user` (`username`, `password`, `nickname`, `role`, `status`)
 VALUES ('admin', '$2a$10$HD1rfa.Fp0hakZwL2/2N2.pDU24Pr7fGQTeTsVGLX1haeauYKIsB6', '管理员', 1, 1),
        ('student01', '$2a$10$HD1rfa.Fp0hakZwL2/2N2.pDU24Pr7fGQTeTsVGLX1haeauYKIsB6', '小明', 0, 1),
        ('student02', '$2a$10$HD1rfa.Fp0hakZwL2/2N2.pDU24Pr7fGQTeTsVGLX1haeauYKIsB6', '小红', 0, 1);
+
+-- ------------------------------------------------------------
+-- 初始化数据：秒杀活动
+-- 时间用 NOW() 动态计算，保证活动处于"进行中"或"即将开始"，方便演示
+-- 第 3 条开始时间设为 3 分钟后，用于验证定时任务的"提前 5 分钟预热"
+-- ------------------------------------------------------------
+INSERT INTO `t_seckill_activity` (`goods_id`, `seckill_price`, `seckill_stock`, `start_time`, `end_time`, `status`)
+VALUES (1, 99.00, 10, DATE_ADD(NOW(), INTERVAL -10 MINUTE), DATE_ADD(NOW(), INTERVAL 120 MINUTE), 1),
+       (2, 399.00, 5, DATE_ADD(NOW(), INTERVAL -10 MINUTE), DATE_ADD(NOW(), INTERVAL 120 MINUTE), 1),
+       (3, 79.00, 20, DATE_ADD(NOW(), INTERVAL 3 MINUTE), DATE_ADD(NOW(), INTERVAL 180 MINUTE), 0);
