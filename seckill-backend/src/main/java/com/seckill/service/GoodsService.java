@@ -15,6 +15,9 @@ public interface GoodsService extends IService<Goods> {
     /** 商品详情，不存在时抛业务异常 */
     Goods getDetail(Long id);
 
+    /** 新增商品，成功后将主键写回实体 */
+    void createGoods(Goods goods);
+
     /** 修改商品，并让缓存失效 */
     void updateGoods(Goods goods);
 

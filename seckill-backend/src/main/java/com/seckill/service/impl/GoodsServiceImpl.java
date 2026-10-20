@@ -86,6 +86,25 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
     }
 
     @Override
+    public void createGoods(Goods goods) {
+        if (!StringUtils.hasText(goods.getName())) {
+            throw new BusinessException(400, "商品名称不能为空");
+        }
+        if (goods.getOriginPrice() == null) {
+            throw new BusinessException(400, "商品原价不能为空");
+        }
+        // 新增时忽略外部传入的主键，避免误更新已有数据
+        goods.setId(null);
+        if (goods.getStock() == null) {
+            goods.setStock(0);
+        }
+        if (goods.getStatus() == null) {
+            goods.setStatus(1);
+        }
+        getBaseMapper().insert(goods);
+    }
+
+    @Override
     public void updateGoods(Goods goods) {
         if (goods.getId() == null) {
             throw new BusinessException(400, "商品 id 不能为空");

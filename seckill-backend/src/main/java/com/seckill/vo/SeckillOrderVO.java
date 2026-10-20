@@ -19,6 +19,15 @@ public class SeckillOrderVO {
 
     private Long goodsId;
 
+    /** 下单用户 id（后台订单列表会用到） */
+    private Long userId;
+
+    /** 下单用户账号 */
+    private String username;
+
+    /** 下单用户昵称 */
+    private String nickname;
+
     /** 商品名称 */
     private String goodsName;
 
