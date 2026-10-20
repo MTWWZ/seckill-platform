@@ -111,3 +111,13 @@ VALUES ('校园联名卫衣', '校庆限定联名款', '校庆限定联名卫衣
        ('图书馆纪念徽章', '校图书馆限定徽章', '图书馆开馆纪念限定金属徽章。',
         'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=metal%20enamel%20pin%20badge%20product%20photo&image_size=square',
         39.90, 300, '文创', 1);
+
+-- ------------------------------------------------------------
+-- 初始化数据：用户
+-- 注意：阶段一还没接入密码加密，这里暂存明文；
+--       阶段③ 接入 JWT 登录后会改成 BCrypt 密文。
+-- ------------------------------------------------------------
+INSERT INTO `t_user` (`username`, `password`, `nickname`, `role`, `status`)
+VALUES ('admin', '123456', '管理员', 1, 1),
+       ('student01', '123456', '小明', 0, 1),
+       ('student02', '123456', '小红', 0, 1);
