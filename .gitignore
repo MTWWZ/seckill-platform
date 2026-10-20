@@ -1,0 +1,34 @@
+# ===== IDE =====
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+
+# ===== Java / Maven =====
+target/
+build/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# ===== Node / 前端 =====
+node_modules/
+dist/
+unpackage/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db
+
+# ===== 本地私有配置（不提交） =====
+application-local.yml
+*.local.yml
+.env
