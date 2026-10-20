@@ -1,0 +1,74 @@
+/* ============================================================
+ * 设计令牌 —— 「限定发售」票据美学
+ * 纸感暖白底 + 墨黑正文 + 朱红（价格/秒杀）+ 荧光酸黄（限量高光）
+ * 该文件被 vite-plugin-uni 自动注入到每个 <style lang="scss"> 中，
+ * 所以这里只放变量与 mixin，不要写会产生输出的 CSS 规则。
+ * ============================================================ */
+
+/* 色板 */
+$ink:        #16150F;   // 墨黑，正文与边框
+$ink-soft:   #4A463A;   // 次级文字
+$ink-mute:   #8D8778;   // 弱化文字
+$line:       rgba(22, 21, 15, 0.12);
+$line-strong: rgba(22, 21, 15, 0.26);
+
+$paper:      #F4F1EA;   // 页面底色（纸感暖白）
+$paper-deep: #E7E2D4;   // 深一档纸色
+$card:       #FFFFFF;
+
+$vermilion:  #E4321B;   // 朱红：秒杀价 / 紧迫感
+$vermilion-deep: #B8250F;
+$acid:       #D8F32B;   // 荧光酸黄：限量标签 / 高光
+$acid-deep:  #B9D315;
+
+/* 数值字体栈：DIN Alternate 在 iOS 端自带，能拿到很漂亮的等宽数字 */
+$font-num: "DIN Alternate", "Bahnschrift", "Roboto Condensed", "Helvetica Neue", "PingFang SC", sans-serif;
+$font-body: "PingFang SC", "HarmonyOS Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+
+$radius: 20rpx;
+$radius-lg: 28rpx;
+
+/* 网点纹理：给纯色底加一层纸面颗粒，避免大面积死板的色块 */
+@mixin dot-grid($color: rgba(22, 21, 15, 0.055), $size: 10rpx) {
+  background-image: radial-gradient($color 1px, transparent 1.2px);
+  background-size: $size $size;
+}
+
+/* 斜纹纹理：用在库存进度条上表示"被抢走的份额" */
+@mixin stripes($color: rgba(255, 255, 255, 0.4), $size: 12rpx) {
+  background-image: linear-gradient(
+    135deg,
+    $color 25%,
+    transparent 25%,
+    transparent 50%,
+    $color 50%,
+    $color 75%,
+    transparent 75%
+  );
+  background-size: $size $size;
+}
+
+/* 票根缺口：卡片左右两侧各挖一个半圆，像一张撕下来的票 */
+@mixin ticket-notch($bg: $paper, $r: 14rpx) {
+  position: relative;
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: $r * 2;
+    height: $r * 2;
+    margin-top: -$r;
+    border-radius: 50%;
+    background: $bg;
+  }
+  &::before { left: -$r; }
+  &::after { right: -$r; }
+}
+
+/* 卡片统一样式 */
+@mixin card-surface($bg: $card) {
+  background: $bg;
+  border-radius: $radius-lg;
+  border: 2rpx solid $line;
+}
