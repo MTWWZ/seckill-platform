@@ -3,6 +3,8 @@ package com.seckill.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.seckill.common.CacheKeys;
 import com.seckill.common.UserContext;
+import com.seckill.config.RabbitMQConfig;
+import com.seckill.dto.SeckillMessage;
 import com.seckill.entity.Goods;
 import com.seckill.entity.SeckillActivity;
 import com.seckill.entity.SeckillOrder;
@@ -12,7 +14,9 @@ import com.seckill.mapper.SeckillActivityMapper;
 import com.seckill.mapper.SeckillOrderMapper;
 import com.seckill.service.SeckillService;
 import com.seckill.vo.SeckillOrderVO;
+import com.seckill.vo.SeckillResultVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -36,13 +40,15 @@ import java.util.stream.Collectors;
 public class SeckillServiceImpl implements SeckillService {
 
     /** Lua 脚本返回值 */
-    private static final long RESULT_SUCCESS = 0L;
-    private static final long RESULT_NO_STOCK = 1L;
-    private static final long RESULT_REPEAT = 2L;
-    private static final long RESULT_NOT_READY = -1L;
+    private static final long LUA_SUCCESS = 0L;
+    private static final long LUA_NO_STOCK = 1L;
+    private static final long LUA_REPEAT = 2L;
+    private static final long LUA_NOT_READY = -1L;
 
-    /** 订单状态：待支付 */
-    private static final int ORDER_STATUS_UNPAID = 0;
+    /** 抢购结果状态 */
+    private static final int STATUS_QUEUING = 0;
+    private static final int STATUS_SUCCESS = 1;
+    private static final int STATUS_FAILED = 2;
 
     /** Lua 脚本只加载一次，后续走 EVALSHA 复用（避免每次传整个脚本） */
     private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
@@ -54,12 +60,13 @@ public class SeckillServiceImpl implements SeckillService {
     }
 
     private final StringRedisTemplate redisTemplate;
+    private final RabbitTemplate rabbitTemplate;
     private final SeckillOrderMapper orderMapper;
     private final SeckillActivityMapper activityMapper;
     private final GoodsMapper goodsMapper;
 
     @Override
-    public SeckillOrderVO seckill(Long activityId) {
+    public SeckillResultVO seckill(Long activityId) {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             throw new BusinessException(401, "请先登录");
@@ -80,35 +87,76 @@ public class SeckillServiceImpl implements SeckillService {
         if (result == null) {
             throw new BusinessException(500, "秒杀失败，请稍后重试");
         }
-        if (result == RESULT_NOT_READY) {
+        if (result == LUA_NOT_READY) {
             throw new BusinessException(400, "活动尚未就绪，请稍后再试");
         }
-        if (result == RESULT_NO_STOCK) {
+        if (result == LUA_NO_STOCK) {
             throw new BusinessException(400, "来晚了，库存已被抢光");
         }
-        if (result == RESULT_REPEAT) {
+        if (result == LUA_REPEAT) {
             throw new BusinessException(409, "您已经抢购过了，每人限购一件");
         }
 
-        // 扣减成功 -> 落库生成订单
-        SeckillOrder order = new SeckillOrder();
-        order.setOrderNo(generateOrderNo(userId, activityId));
-        order.setUserId(userId);
-        order.setActivityId(activityId);
-        order.setGoodsId(activity.getGoodsId());
-        order.setAmount(activity.getSeckillPrice());
-        order.setStatus(ORDER_STATUS_UNPAID);
+        // 扣减成功 -> 不再同步写数据库，只发一条消息就返回。
+        // 响应时间从"等数据库插入"降到"写一次 Redis + 发一次消息"，
+        // 请求高峰由 MQ 堆住，消费者按自己的节奏落库（削峰）。
+        String orderNo = generateOrderNo(userId, activityId);
+        SeckillMessage message = new SeckillMessage(userId, activityId, activity.getGoodsId(),
+                activity.getSeckillPrice(), orderNo);
         try {
-            orderMapper.insert(order);
+            rabbitTemplate.convertAndSend(RabbitMQConfig.SECKILL_EXCHANGE,
+                    RabbitMQConfig.SECKILL_ORDER_ROUTING_KEY, message);
         } catch (Exception e) {
-            // 落库失败必须把 Redis 的库存和标记还回去，否则会"少卖"
+            // 发消息失败：把库存和标记还回去，否则用户永远等不到订单（少卖）
             rollbackRedis(activityId, userId);
             throw new BusinessException(500, "下单失败，请稍后重试");
         }
-        // createTime 由数据库默认值生成，这里补一个近似值直接返回，避免再查一次库
-        order.setCreateTime(LocalDateTime.now());
 
-        return toVO(order, null);
+        SeckillResultVO vo = new SeckillResultVO();
+        vo.setActivityId(activityId);
+        vo.setOrderNo(orderNo);
+        vo.setStatus(STATUS_QUEUING);
+        vo.setStatusText("排队中");
+        vo.setMessage("抢购成功，订单正在生成中，请稍后查询结果");
+        return vo;
+    }
+
+    @Override
+    public SeckillResultVO queryResult(Long activityId) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+
+        SeckillResultVO vo = new SeckillResultVO();
+        vo.setActivityId(activityId);
+
+        // 订单已落库 -> 抢购成功
+        SeckillOrder order = orderMapper.selectOne(new LambdaQueryWrapper<SeckillOrder>()
+                .eq(SeckillOrder::getUserId, userId)
+                .eq(SeckillOrder::getActivityId, activityId)
+                .last("limit 1"));
+        if (order != null) {
+            vo.setOrderNo(order.getOrderNo());
+            vo.setStatus(STATUS_SUCCESS);
+            vo.setStatusText("抢购成功");
+            vo.setMessage("订单已生成");
+            return vo;
+        }
+
+        // 订单还没落库，但用户在参与集合里 -> 还在排队（消息正在被消费）
+        boolean queued = Boolean.TRUE.equals(
+                redisTemplate.opsForSet().isMember(CacheKeys.activityUsers(activityId), String.valueOf(userId)));
+        if (queued) {
+            vo.setStatus(STATUS_QUEUING);
+            vo.setStatusText("排队中");
+            vo.setMessage("订单生成中，请稍后查询结果");
+        } else {
+            vo.setStatus(STATUS_FAILED);
+            vo.setStatusText("未抢到");
+            vo.setMessage("很遗憾，您没有抢到");
+        }
+        return vo;
     }
 
     @Override

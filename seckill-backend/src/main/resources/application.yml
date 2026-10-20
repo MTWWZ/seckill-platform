@@ -21,6 +21,23 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: /
+    # 发送确认：消息到达交换机后回调，能发现"消息没送出去"
+    publisher-confirm-type: correlated
+    # 路由失败（找不到队列）时把消息退回
+    publisher-returns: true
+    listener:
+      simple:
+        # 手动 ACK：业务处理成功才确认消息，避免消息丢失
+        acknowledge-mode: manual
+        # 一次预取 20 条，限制单个消费者的内存占用
+        prefetch: 20
 
 mybatis-plus:
   # 开启驼峰映射：数据库 shop_id <-> 实体 shopId
