@@ -1,7 +1,10 @@
 package com.seckill.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
+import com.seckill.dto.UserLoginDTO;
+import com.seckill.dto.UserRegisterDTO;
 import com.seckill.entity.User;
+import com.seckill.vo.LoginVO;
 
 /**
  * 用户业务接口
@@ -10,4 +13,10 @@ import com.seckill.entity.User;
  * save / removeById / updateById / getById / list / page ...
  */
 public interface UserService extends IService<User> {
+
+    /** 注册新用户 */
+    void register(UserRegisterDTO dto);
+
+    /** 登录，成功返回 token 与用户信息 */
+    LoginVO login(UserLoginDTO dto);
 }

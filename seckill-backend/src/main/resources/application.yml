@@ -27,6 +27,15 @@ mybatis-plus:
   # 自定义 XML 的存放位置（复杂 SQL 写在这里）
   mapper-locations: classpath*:/mapper/**/*.xml
 
+# JWT 配置
+jwt:
+  # 签名密钥（生产环境请用环境变量注入，不要硬编码）
+  secret: ${JWT_SECRET:seckill-platform-dev-secret-key-change-me-in-production-2026}
+  # token 有效期（分钟）
+  expire-minutes: 120
+  # 前端携带 token 的请求头名称
+  header: Authorization
+
 logging:
   level:
     com.seckill: debug

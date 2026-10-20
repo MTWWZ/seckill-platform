@@ -114,10 +114,10 @@ VALUES ('校园联名卫衣', '校庆限定联名款', '校庆限定联名卫衣
 
 -- ------------------------------------------------------------
 -- 初始化数据：用户
--- 注意：阶段一还没接入密码加密，这里暂存明文；
---       阶段③ 接入 JWT 登录后会改成 BCrypt 密文。
+-- 密码统一为 123456，存的是 BCrypt 密文
+-- （同一个密码每次加密结果都不同，所以这里只是一份可用的密文样本）
 -- ------------------------------------------------------------
 INSERT INTO `t_user` (`username`, `password`, `nickname`, `role`, `status`)
-VALUES ('admin', '123456', '管理员', 1, 1),
-       ('student01', '123456', '小明', 0, 1),
-       ('student02', '123456', '小红', 0, 1);
+VALUES ('admin', '$2a$10$HD1rfa.Fp0hakZwL2/2N2.pDU24Pr7fGQTeTsVGLX1haeauYKIsB6', '管理员', 1, 1),
+       ('student01', '$2a$10$HD1rfa.Fp0hakZwL2/2N2.pDU24Pr7fGQTeTsVGLX1haeauYKIsB6', '小明', 0, 1),
+       ('student02', '$2a$10$HD1rfa.Fp0hakZwL2/2N2.pDU24Pr7fGQTeTsVGLX1haeauYKIsB6', '小红', 0, 1);

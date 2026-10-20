@@ -21,6 +21,7 @@
     <properties>
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <jjwt.version>0.12.7</jjwt.version>
     </properties>
 
     <dependencies>
@@ -55,6 +56,31 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- JWT：jjwt 需要 api + impl + jackson 三个包 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- BCrypt 密码加密（只引入 crypto，不会触发 Spring Security 的登录拦截） -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
         <!-- Lombok：省略 getter/setter，减少样板代码 -->
