@@ -68,3 +68,17 @@ jwt:
 logging:
   level:
     com.seckill: debug
+
+# 监控（Actuator）
+management:
+  endpoints:
+    web:
+      exposure:
+        # 生产环境不要这么开放，至少要用鉴权保护 /actuator/**
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
