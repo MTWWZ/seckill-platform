@@ -23,6 +23,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 // 放行：注册、登录不需要 token
                 .excludePathPatterns(
                         "/api/user/register",
-                        "/api/user/login");
+                        "/api/user/login",
+                        // 连通性自检接口，不需要登录
+                        "/api/redis/**");
     }
 }

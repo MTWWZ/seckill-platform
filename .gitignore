@@ -32,3 +32,6 @@ Thumbs.db
 application-local.yml
 *.local.yml
 .env
+
+# ===== 本地工具（不提交） =====
+Redis-x64-3.2.100/
