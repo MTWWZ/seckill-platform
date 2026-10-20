@@ -14,4 +14,10 @@ public interface GoodsService extends IService<Goods> {
 
     /** 商品详情，不存在时抛业务异常 */
     Goods getDetail(Long id);
+
+    /** 修改商品，并让缓存失效 */
+    void updateGoods(Goods goods);
+
+    /** 删除商品（逻辑删除），并让缓存失效 */
+    void deleteGoods(Long id);
 }
