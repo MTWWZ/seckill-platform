@@ -58,6 +58,31 @@
 
 ## 快速开始
 
+### 0. Docker 一键启动（可选）
+
+装了 Docker Desktop 的话，可以跳过下面 1–3 步的本地环境准备：
+
+```bash
+docker compose up -d --build     # 首次会构建后端与管理后台镜像
+docker compose logs -f backend   # 观察启动日志
+docker compose down              # 停止（数据保留在 volume）
+docker compose down -v           # 连数据一起清掉
+```
+
+| 入口 | 地址 |
+|---|---|
+| 管理后台 | http://localhost:8081 |
+| 后端接口 | http://localhost:8080 |
+| RabbitMQ 管理台 | http://localhost:15672（guest / guest） |
+
+几点说明：
+
+- MySQL / Redis / AMQP 端口**不映射**到宿主机，容器间用服务名互访，不会和你本机已有的 3306 / 6379 / 5672 冲突
+- 首次启动 MySQL 会执行挂载的 `sql/init.sql` 灌入演示数据，随后 Flyway 接管表结构版本
+- 后端镜像多阶段构建：Maven 打包 → 只保留 JRE + jar；管理后台镜像：Node 构建 → Nginx 托管并反代 `/api`
+- 只想用中间件：`docker compose up -d mysql redis rabbitmq`
+- 用户端（uni-app）没有放进 compose：H5 用 `npm run dev:h5`，小程序在微信开发者工具里跑
+
 ### 1. 环境准备
 
 | 依赖 | 版本 | 默认端口 |
@@ -305,7 +330,9 @@ return 0
 ```
 seckill-platform/
 ├── .github/workflows/ci.yml    # GitHub Actions 持续集成
+├── docker-compose.yml          # 一键起 MySQL / Redis / RabbitMQ / 后端 / 管理后台
 ├── seckill-backend/            # Spring Boot 后端
+│   ├── Dockerfile              # 多阶段构建镜像
 │   ├── sql/init.sql            # 重置演示环境（建表 + 种子数据）
 │   ├── sql/init-test.sql       # 创建测试库
 │   └── src/main/
@@ -313,7 +340,7 @@ seckill-platform/
 │       └── resources/
 │           ├── db/migration/   # Flyway 迁移脚本
 │           └── scripts/        # Lua 脚本（库存扣减、限流）
-├── seckill-admin/              # Vue3 管理后台
+├── seckill-admin/              # Vue3 管理后台（Dockerfile + nginx.conf）
 ├── seckill-uniapp/             # uni-app 用户端
 └── docs/architecture.md        # 架构与核心链路详解
 ```

@@ -1,0 +1,115 @@
+# ============================================================
+# 一键起全套服务：MySQL + Redis + RabbitMQ + 后端 + 管理后台
+#
+#   docker compose up -d --build          # 首次构建并启动
+#   docker compose logs -f backend        # 看后端日志
+#   docker compose down                   # 停止（数据保留在 volume 里）
+#   docker compose down -v                # 连数据一起删
+#
+# 只想要中间件（本地跑后端连它们）：
+#   docker compose up -d mysql redis rabbitmq
+#
+# 注意：MySQL / Redis / RabbitMQ 的 5672 端口没有映射到宿主机，
+# 容器内部通过服务名互访；只有 15672 管理台、8080 后端、8081 管理后台对外开放，
+# 这样不会和你本机已经在跑的 3306 / 6379 / 5672 冲突。
+# ============================================================
+
+name: seckill-platform
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: seckill-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: seckill
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 只在数据目录为空（第一次启动）时执行，灌入演示商品/用户/活动；
+      # 想要空库就把这一行注释掉
+      - ./seckill-backend/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  redis:
+    image: redis:7
+    container_name: seckill-redis
+    restart: unless-stopped
+    # appendonly 打开持久化：容器重启后库存 key 不会凭空消失
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: seckill-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      TZ: Asia/Shanghai
+    ports:
+      # 只暴露管理台，AMQP 端口留给容器网络内部使用
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./seckill-backend
+    container_name: seckill-backend
+    restart: unless-stopped
+    environment:
+      # application.yml 里用这些变量覆盖默认的 localhost
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: "123456"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      # JWT 密钥必须够长（HS256 要求 32 字节以上），生产环境请换成随机值
+      JWT_SECRET: seckill-platform-docker-dev-secret-key-2026-32bytes
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: ./seckill-admin
+    container_name: seckill-admin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
