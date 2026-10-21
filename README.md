@@ -57,6 +57,24 @@
 
 ---
 
+## 界面预览
+
+用户端（uni-app，H5 端实测）：
+
+| 活动首页 | 活动详情 |
+|---|---|
+| <img src="docs/screenshots/01-home.png" width="320" /> | <img src="docs/screenshots/03-seckill-detail.png" width="320" /> |
+
+| 商品列表 | 抢购结果 |
+|---|---|
+| <img src="docs/screenshots/02-goods-list.png" width="320" /> | <img src="docs/screenshots/05-result.png" width="320" /> |
+
+| 我的订单 |
+|---|
+| <img src="docs/screenshots/04-orders.png" width="320" /> |
+
+---
+
 ## 快速开始
 
 ### 0. Docker 一键启动（可选）
@@ -195,6 +213,34 @@ mvn test
 | `OrderLifecycleTest` | 支付幂等；他人订单返回 404；超时关单库存只回补一次；已支付订单不会被取消；已取消订单不能支付 |
 
 测试中 `RabbitTemplate` 被 mock（`@MockitoBean`），不会真的往开发环境的队列投消息；Rabbit 监听器通过 `spring.rabbitmq.listener.simple.auto-startup=false` 关闭。
+
+---
+
+## 压测
+
+脚本零依赖（Node 18+），会先注册临时账号再一次性并发抢购：
+
+```bash
+node scripts/loadtest.mjs --users 50 --activity 1
+```
+
+| 参数 | 说明 |
+|---|---|
+| `--users` | 并发用户数，脚本自动注册 `load_<runId>_<i>` 账号 |
+| `--activity` | 活动 ID，不传则自动选第一个「进行中」的活动 |
+| `--base` | 后端地址，默认 `http://localhost:8080` |
+| `--token` | 复用已有 JWT，不再注册账号（适合只测限流） |
+
+输出各业务码数量、总耗时、QPS、P50/P95/P99 和活动剩余库存。
+
+本机实测（后端与 MySQL/Redis/RabbitMQ 同机）：
+
+| 场景 | 请求数 | 初始库存 | 成功 | 其他 | 总耗时 | QPS | P95 |
+|---|---|---|---|---|---|---|---|
+| 超卖验证 | 50 | 10 | 10 | 40 个 400（库存不足） | 334 ms | 149.7 | 326 ms |
+| 吞吐 | 200 | 200 | 200 | - | 816 ms | 245.1 | 746 ms |
+
+两轮结束后 Redis 库存都为 0，数据库订单数分别为 10 与 200，没有负数、没有超卖。
 
 ---
 
@@ -345,10 +391,11 @@ return 0
 
 | 场景 | 方法 | 结果 |
 |---|---|---|
-| 超卖验证 | 30 并发抢 10 件库存 | 恰好 10 单成功，库存不为负 |
+| 超卖验证 | `scripts/loadtest.mjs --users 50 --activity 1` | 库存 10，恰好 10 单成功，其余 40 个 400，库存归 0 |
+| 吞吐 | `scripts/loadtest.mjs --users 200 --activity 4` | 816 ms、QPS ≈ 245、P95 746 ms，零超卖 |
 | 一人一单 | 同一账号重复请求 | 首次 200，后续 409 |
 | 接口限流 | 1 秒内连打 10 次抢购接口 | 5 次通过限流，其余 429 |
-| 压测 | 100 并发抢购 | 总耗时 653ms，QPS ≈ 153，零超卖 |
+| 权限 | 普通用户 / 管理员 / 匿名访问 `/api/admin/**` | 403 / 200 / 401 |
 | 异步最终一致 | 活动库存 50，观察订单数变化 | 27 → 45 → 50，最终完全一致 |
 | 超时关单 | 未支付订单到期 | 状态变「已取消」，Redis 库存 +1 |
 | 支付 | 支付后等待超时到期 | 状态保持「已支付」，未被取消 |
@@ -363,6 +410,7 @@ return 0
 seckill-platform/
 ├── .github/workflows/ci.yml    # GitHub Actions 持续集成
 ├── docker-compose.yml          # 一键起 MySQL / Redis / RabbitMQ / 后端 / 管理后台 / 监控
+├── scripts/loadtest.mjs        # 秒杀压测脚本（零依赖）
 ├── deploy/
 │   ├── prometheus/             # 抓取配置
 │   └── grafana/                # 数据源、面板 provisioning 与仪表盘 JSON
