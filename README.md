@@ -7,6 +7,7 @@
 核心要解决的问题是「高并发下的不超卖」：库存扣减放在 Redis 用 Lua 原子完成，订单落库交给 RabbitMQ 异步削峰，未支付订单到期自动取消并回补库存。
 
 > 具体链路、并发正确性论证、故障兜底见 [docs/architecture.md](docs/architecture.md)。
+> 项目复盘、踩坑记录与面试要点见 [docs/project-summary.md](docs/project-summary.md)。
 
 ```
 用户端 (uni-app)  ──┐
