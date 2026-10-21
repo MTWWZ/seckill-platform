@@ -50,6 +50,7 @@
 - 超时关单：TTL + 死信延迟队列，15 分钟未支付自动取消并回补库存，另有定时任务兜底
 - 接口限流：`@RateLimit` 注解 + AOP + Redis Lua 固定窗口（USER / IP / GLOBAL 三个维度）
 - 监控：`/actuator/health`、`/actuator/metrics`、`/actuator/prometheus`
+- 自动化测试：JUnit5 + MockMvc，覆盖并发不超卖、一人一单、限流、支付与超时关单幂等
 
 ---
 
@@ -130,6 +131,28 @@ npm run build:mp-weixin # 小程序产物在 dist/build/mp-weixin
 | admin | 123456 | 管理员 |
 | student01 | 123456 | 普通用户 |
 | student02 | 123456 | 普通用户 |
+
+### 6. 运行测试（可选）
+
+测试用独立的 `seckill_test` 库 + Redis 15 号库，不会污染开发环境的数据：
+
+```bash
+# 只需执行一次，建测试库（表由测试启动时自动建）
+mysql -uroot -p123456 --default-character-set=utf8mb4 < seckill-backend/sql/init-test.sql
+
+cd seckill-backend
+mvn test
+```
+
+覆盖场景：
+
+| 测试类 | 用例 |
+|---|---|
+| `SeckillConcurrencyTest` | 30 个用户并发抢 10 件，恰好 10 单成功、库存为 0；同一用户重复抢购返回 409 且库存只扣一次 |
+| `SeckillApiTest` | 无 token / 非法 token 返回 401；1 秒内连打 10 次抢购，5 次通过限流、其余 429 |
+| `OrderLifecycleTest` | 支付幂等；他人订单返回 404；超时关单库存只回补一次；已支付订单不会被取消；已取消订单不能支付 |
+
+测试中 `RabbitTemplate` 被 mock（`@MockitoBean`），不会真的往开发环境的队列投消息；Rabbit 监听器通过 `spring.rabbitmq.listener.simple.auto-startup=false` 关闭。
 
 ---
 
@@ -279,6 +302,6 @@ seckill-platform/
 
 - 支付是演示实现（直接把订单置为已支付），没有接真实支付渠道
 - 表结构靠手工执行 `init.sql`，没有引入 Flyway/Liquibase
-- 后端暂无自动化测试，验证以手工压测与接口实测为主
+- 测试覆盖核心链路（下单并发、限流、订单状态），商品与活动的 CRUD 尚未覆盖
 - 定时任务基于单机 `@Scheduled`，多实例部署需要加分布式锁
 - JWT 没有 refresh token 与登出黑名单

@@ -385,8 +385,30 @@ Redis 执行 Lua 时是单线程且不可中断，这是「判断 + 扣减」能
 
 - **支付闭环**：接真实支付渠道，回调验签 + 幂等处理
 - **数据一致性**：引入 Flyway 管理表结构，避免手工跑 `init.sql` 清库
-- **自动化测试**：JUnit5 + MockMvc 覆盖鉴权、Lua 不超卖、一人一单、限流四条核心逻辑
+- **测试补充**：在现有 JUnit5 用例基础上覆盖商品/活动 CRUD、缓存一致性与支付回调
 - **监控面板**：Prometheus + Grafana，看库存水位、下单成功率、MQ 堆积
 - **链路追踪**：拦截器生成 traceId 写入 MDC，日志按 traceId 串联
 - **多实例部署**：定时任务加 ShedLock，避免多台机器重复预热
 - **鉴权增强**：refresh token + 登出黑名单
+
+---
+
+## 14. 测试策略
+
+测试与开发环境隔离，避免污染演示数据：
+
+| 资源 | 开发环境 | 测试环境 |
+|---|---|---|
+| MySQL | `seckill` | `seckill_test`（`sql/init-test.sql` 建库，表由 `test-schema.sql` 自动创建） |
+| Redis | 0 号库 | 15 号库 |
+| RabbitMQ | 真实收发 | `RabbitTemplate` 用 `@MockitoBean` 替换，监听器 `auto-startup=false` |
+
+每个用例前清空订单表、活动表和测试 Redis 库，保证用例之间互不影响。
+
+用例划分：
+
+| 层次 | 类 | 验证点 |
+|---|---|---|
+| 服务层并发 | `SeckillConcurrencyTest` | Lua 原子扣减不超卖、一人一单、库存不会被扣成负数 |
+| 接口层 | `SeckillApiTest` | 登录拦截器 401、限流 429、业务码透传 |
+| 生命周期 | `OrderLifecycleTest` | 支付幂等、归属校验、超时关单库存只回补一次、状态流转合法 |
