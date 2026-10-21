@@ -35,3 +35,6 @@ application-local.yml
 
 # ===== 本地工具（不提交） =====
 Redis-x64-3.2.100/
+
+# ===== 求职材料（只留本地，不提交） =====
+docs/resume.md
