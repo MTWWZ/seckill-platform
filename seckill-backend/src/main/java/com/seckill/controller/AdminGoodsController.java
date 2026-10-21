@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 商品管理接口（需要登录）
+ * 商品管理接口（需要管理员角色）
  * <p>
  * 放在 /api/admin/** 而不是 /api/goods/**，
  * 因为 /api/goods/** 是游客可见的浏览接口，写操作不能混在里面。
- * 管理员角色校验会在后续阶段补上。
+ * 角色校验由 AdminInterceptor 统一拦截 /api/admin/** 完成。
  */
 @RestController
 @RequestMapping("/api/admin/goods")

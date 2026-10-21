@@ -46,6 +46,7 @@
 
 ### 后端核心能力
 - 用户注册 / 登录 / JWT 鉴权（拦截器 + ThreadLocal 传递当前用户）
+- 权限分层：认证拦截器校验登录态，管理员拦截器校验 `/api/admin/**` 必须是 role=1
 - 商品详情缓存：Cache-Aside、空值防穿透、TTL 随机偏移防雪崩
 - 秒杀下单：Lua 原子扣减 + 一人一单 + Redis 补偿
 - 异步下单：RabbitMQ 手动 ACK、双重幂等、死信队列
@@ -190,6 +191,7 @@ mvn test
 |---|---|
 | `SeckillConcurrencyTest` | 30 个用户并发抢 10 件，恰好 10 单成功、库存为 0；同一用户重复抢购返回 409 且库存只扣一次 |
 | `SeckillApiTest` | 无 token / 非法 token 返回 401；1 秒内连打 10 次抢购，5 次通过限流、其余 429 |
+| `AdminAuthTest` | 普通用户访问管理接口 403；管理员 200；未登录 401 |
 | `OrderLifecycleTest` | 支付幂等；他人订单返回 404；超时关单库存只回补一次；已支付订单不会被取消；已取消订单不能支付 |
 
 测试中 `RabbitTemplate` 被 mock（`@MockitoBean`），不会真的往开发环境的队列投消息；Rabbit 监听器通过 `spring.rabbitmq.listener.simple.auto-startup=false` 关闭。
@@ -202,7 +204,7 @@ mvn test
 
 | Job | 内容 |
 |---|---|
-| `backend` | 起 MySQL 8 / Redis 7 / RabbitMQ 4 服务容器 → `mvn test`（10 个用例）→ `mvn -DskipTests package`，并上传 surefire 报告 |
+| `backend` | 起 MySQL 8 / Redis 7 / RabbitMQ 4 服务容器 → `mvn test`（13 个用例）→ `mvn -DskipTests package`，并上传 surefire 报告 |
 | `admin` | `npm ci` → `npm run build` |
 | `uniapp` | `npm ci` → `npm run build:h5` → `npm run build:mp-weixin` |
 
@@ -250,6 +252,7 @@ mvn test
 | 200 | 成功 |
 | 400 | 参数错误 / 库存不足 / 活动未开始或已结束 |
 | 401 | 未登录或 token 失效 |
+| 403 | 已登录但无权限（普通用户访问管理接口） |
 | 404 | 资源不存在 |
 | 409 | 重复下单 / 订单状态冲突 |
 | 429 | 触发限流 |

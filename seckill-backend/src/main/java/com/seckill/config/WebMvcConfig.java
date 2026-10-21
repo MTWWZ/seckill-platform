@@ -1,5 +1,6 @@
 package com.seckill.config;
 
+import com.seckill.interceptor.AdminInterceptor;
 import com.seckill.interceptor.LoginInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final LoginInterceptor loginInterceptor;
+    private final AdminInterceptor adminInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -30,5 +32,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/goods/**",
                         // 秒杀活动浏览类接口，游客可见
                         "/api/seckill/activity/**");
+
+        // 认证之后再做授权：管理接口只允许 role=1，顺序不能反
+        registry.addInterceptor(adminInterceptor)
+                .addPathPatterns("/api/admin/**");
     }
 }

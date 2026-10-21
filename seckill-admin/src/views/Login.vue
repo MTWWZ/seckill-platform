@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -21,9 +22,16 @@ async function handleLogin() {
   }
   loading.value = true
   try {
-    await userStore.login(form)
+    const result = await userStore.login(form)
+    // 后台只给管理员用：普通用户能通过 /api/user/login，但不该进到这里
+    if (result.role !== 1) {
+      userStore.logout()
+      ElMessage.error('该账号没有管理员权限')
+      return
+    }
     ElMessage.success('登录成功')
-    router.push('/goods')
+    const redirect = route.query.redirect
+    router.push(typeof redirect === 'string' && redirect ? redirect : '/goods')
   } finally {
     loading.value = false
   }

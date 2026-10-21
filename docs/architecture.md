@@ -335,13 +335,25 @@ Redis 执行 Lua 时是单线程且不可中断，这是「判断 + 扣减」能
 
 ## 10. 鉴权
 
+认证（你是谁）与授权（你能不能）分成两个拦截器：
+
 ```
 登录 -> BCrypt 校验密码 -> 签发 JWT（HS256，2 小时）
-请求 -> LoginInterceptor 校验 Authorization: Bearer <token>
-     -> 解析 userId 放进 UserContext（ThreadLocal）
+
+请求 -> LoginInterceptor（/api/**）
+     -> 校验 Authorization: Bearer <token>
+     -> 解析 userId / role 放进 UserContext（ThreadLocal）
+
+     -> AdminInterceptor（/api/admin/**，注册在登录拦截器之后）
+     -> role != 1 直接返回 403
+
      -> 业务层直接 UserContext.getUserId()
 响应结束 -> 清理 ThreadLocal（避免线程池串号）
 ```
+
+- 顺序不能反：授权依赖认证填好的 `UserContext`
+- 401 和 403 分开：`401` 表示没登录或 token 失效，`403` 表示登录了但角色不够
+- 前端路由守卫只做体验层拦截，真正的权限判断永远在后端
 
 放行清单：注册、登录、`/api/redis/**`、`/api/goods/**`、`/api/seckill/activity/**`。
 
@@ -423,4 +435,5 @@ Redis 执行 Lua 时是单线程且不可中断，这是「判断 + 扣减」能
 |---|---|---|
 | 服务层并发 | `SeckillConcurrencyTest` | Lua 原子扣减不超卖、一人一单、库存不会被扣成负数 |
 | 接口层 | `SeckillApiTest` | 登录拦截器 401、限流 429、业务码透传 |
+| 授权 | `AdminAuthTest` | 普通用户访问管理接口 403、管理员 200、未登录 401 |
 | 生命周期 | `OrderLifecycleTest` | 支付幂等、归属校验、超时关单库存只回补一次、状态流转合法 |

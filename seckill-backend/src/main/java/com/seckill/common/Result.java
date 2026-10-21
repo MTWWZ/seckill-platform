@@ -19,6 +19,8 @@ public class Result<T> {
     public static final int SUCCESS = 200;
     public static final int BAD_REQUEST = 400;
     public static final int UNAUTHORIZED = 401;
+    /** 已登录但没有权限（比如普通用户访问管理接口） */
+    public static final int FORBIDDEN = 403;
     public static final int ERROR = 500;
 
     private Integer code;

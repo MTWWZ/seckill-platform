@@ -24,6 +24,7 @@ export const useUserStore = defineStore('user', () => {
     setToken(result.token)
     localStorage.setItem(USERNAME_KEY, result.username)
     localStorage.setItem(ROLE_KEY, String(result.role))
+    return result
   }
 
   function logout() {
