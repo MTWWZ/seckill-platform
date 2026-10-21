@@ -69,6 +69,18 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
+        <!-- Flyway：用版本化脚本管理表结构，启动时自动执行未应用过的迁移 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <!-- Flyway 10 起数据库支持拆成独立模块，MySQL 必须单独引入 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- MySQL 驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>

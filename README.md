@@ -80,11 +80,22 @@
 
 ### 2. 初始化数据库
 
+先建库（表结构由后端启动时的 Flyway 自动创建）：
+
+```bash
+mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS seckill DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+```
+
+表结构迁移脚本在 `seckill-backend/src/main/resources/db/migration/`，启动后端时会自动执行未应用过的版本。
+
+想要演示数据（4 件商品、3 个用户、3 场秒杀活动），再执行一次种子脚本：
+
 ```bash
 mysql -uroot -p123456 --default-character-set=utf8mb4 < seckill-backend/sql/init.sql
 ```
 
-脚本会**先删表再建表**，并写入 4 件商品、3 个用户、3 场秒杀活动（活动时间按 `NOW()` 动态计算，保证跑起来就是「进行中」）。
+> `init.sql` 会**先删表再建表**并写入种子数据，属于「重置演示环境」脚本。
+> 日常改表请新增 `V2__xxx.sql` 这样的迁移文件，不要修改已执行过的迁移脚本（Flyway 会校验 checksum）。
 
 ### 3. 启动后端
 
@@ -301,7 +312,6 @@ seckill-platform/
 ## 已知限制
 
 - 支付是演示实现（直接把订单置为已支付），没有接真实支付渠道
-- 表结构靠手工执行 `init.sql`，没有引入 Flyway/Liquibase
 - 测试覆盖核心链路（下单并发、限流、订单状态），商品与活动的 CRUD 尚未覆盖
 - 定时任务基于单机 `@Scheduled`，多实例部署需要加分布式锁
 - JWT 没有 refresh token 与登出黑名单

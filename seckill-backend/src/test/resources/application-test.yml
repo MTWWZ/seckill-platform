@@ -15,6 +15,9 @@ spring:
     init:
       mode: always
       schema-locations: classpath:test-schema.sql
+  # 测试库的表交给 test-schema.sql 建，不走 Flyway，避免和迁移脚本互相干扰
+  flyway:
+    enabled: false
 
 mybatis-plus:
   configuration:

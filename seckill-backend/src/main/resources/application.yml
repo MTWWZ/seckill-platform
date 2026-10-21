@@ -21,6 +21,14 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  # Flyway：启动时自动执行 db/migration 下未应用过的脚本
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 项目早期用 init.sql 手工建过表，没有版本记录；
+    # 基线设为 0 再执行 V1（V1 里是 CREATE TABLE IF NOT EXISTS，对已有表是幂等的）
+    baseline-on-migrate: true
+    baseline-version: 0
   # RabbitMQ
   rabbitmq:
     host: ${RABBITMQ_HOST:127.0.0.1}

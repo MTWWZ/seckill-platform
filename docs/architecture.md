@@ -104,6 +104,7 @@ erDiagram
 
 设计要点：
 
+- **表结构由 Flyway 管理**：`db/migration/V1__init_schema.sql` 定义全部表，启动时自动执行未应用的版本；已有库会先 baseline 到 0 再执行 V1（脚本用 `CREATE TABLE IF NOT EXISTS`，对存量表是幂等的）
 - **活动库存与商品总库存分开**：秒杀只扣 `t_seckill_activity.seckill_stock`，商品表库存是另一套账，互不影响
 - **`uk_user_activity` 唯一索引**是「一人一单」的最后一道防线，应用层判断失效也能被数据库挡住
 - **逻辑删除**：所有表有 `deleted` 字段，MyBatis-Plus 自动过滤
@@ -384,7 +385,6 @@ Redis 执行 Lua 时是单线程且不可中断，这是「判断 + 扣减」能
 ## 13. 后续可扩展方向
 
 - **支付闭环**：接真实支付渠道，回调验签 + 幂等处理
-- **数据一致性**：引入 Flyway 管理表结构，避免手工跑 `init.sql` 清库
 - **测试补充**：在现有 JUnit5 用例基础上覆盖商品/活动 CRUD、缓存一致性与支付回调
 - **监控面板**：Prometheus + Grafana，看库存水位、下单成功率、MQ 堆积
 - **链路追踪**：拦截器生成 traceId 写入 MDC，日志按 traceId 串联
