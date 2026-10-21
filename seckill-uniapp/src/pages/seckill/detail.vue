@@ -4,17 +4,15 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
 import AppNavBar from '@/components/AppNavBar.vue'
 import CountDown from '@/components/CountDown.vue'
 import { activityDetail, orderResult, seckill } from '@/api/seckill'
-import { isLogin, BizError } from '@/utils/request'
-import { formatTime, money, moneyParts, pad2 } from '@/utils/format'
+import { isLogin } from '@/utils/request'
+import { moneyParts, formatTime, pad2 } from '@/utils/format'
 import { RESULT_STATUS, type SeckillActivity, type SeckillResult } from '@/api/types'
 
 const activityId = ref(0)
 const activity = ref<SeckillActivity | null>(null)
 const loading = ref(true)
 const submitting = ref(false)
-/** 当前用户在这一场的既有结果，用来判断"我已抢到/排队中" */
 const mine = ref<SeckillResult | null>(null)
-
 const imgFailed = ref(false)
 
 const rules = [
@@ -26,22 +24,20 @@ const rules = [
 
 const remainStock = computed(() => activity.value?.redisStock ?? activity.value?.seckillStock ?? 0)
 const price = computed(() => moneyParts(activity.value?.seckillPrice))
+const saved = computed(() => {
+  const origin = Number(activity.value?.originPrice ?? 0)
+  const now = Number(activity.value?.seckillPrice ?? 0)
+  return Math.max(0, origin - now)
+})
+
 const soldPercent = computed(() => {
   const total = activity.value?.seckillStock || 0
   if (!total) return 0
   const sold = Math.min(total, Math.max(0, total - remainStock.value))
   return Math.round((sold / total) * 100)
 })
-const saved = computed(() => {
-  const origin = Number(activity.value?.originPrice ?? 0)
-  const now = Number(activity.value?.seckillPrice ?? 0)
-  return money(Math.max(0, origin - now))
-})
 
-/** 按钮形态：用一个明确的模式枚举驱动，避免在模板里堆 if */
-const mode = computed<
-  'loading' | 'ordered' | 'queuing' | 'ended' | 'upcoming' | 'soldout' | 'ready'
->(() => {
+const mode = computed(() => {
   if (mine.value?.status === RESULT_STATUS.SUCCESS) return 'ordered'
   if (mine.value?.status === RESULT_STATUS.QUEUING) return 'queuing'
   if (!activity.value) return 'loading'
@@ -54,7 +50,7 @@ const mode = computed<
 const cta = computed(() => {
   switch (mode.value) {
     case 'ordered':
-      return { label: 'Order Placed', sub: mine.value?.orderNo || '订单已生成', text: '查看我的订单', disabled: false }
+      return { label: 'Order Placed', sub: '订单已生成', text: '查看我的订单', disabled: false }
     case 'queuing':
       return { label: 'Queuing', sub: '订单正在生成中', text: '查看抢购进度', disabled: false }
     case 'ended':
@@ -68,17 +64,11 @@ const cta = computed(() => {
     default:
       return {
         label: 'Buy Now',
-        sub: `￥${money(activity.value?.seckillPrice)} 限时价`,
+        sub: `￥${activity.value?.seckillPrice ?? ''} 限时价`,
         text: '立即抢购',
         disabled: false
       }
   }
-})
-
-const statusClass = computed(() => {
-  if (activity.value?.statusText === '进行中') return 'badge--acid'
-  if (activity.value?.statusText === '已结束') return 'badge--line'
-  return 'badge--ink'
 })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -104,11 +94,14 @@ async function loadMine() {
   }
 }
 
-/** 每 3 秒静默刷新一次：库存变化、以及"未开始 -> 进行中"的自动切换 */
 async function poll() {
   if (!activity.value || activity.value.statusText === '已结束') return
   await loadDetail(true)
   if (mode.value === 'queuing') await loadMine()
+}
+
+function goResult() {
+  uni.redirectTo({ url: `/pages/seckill/result?activityId=${activityId.value}` })
 }
 
 async function handleCta() {
@@ -133,25 +126,21 @@ async function handleCta() {
     await seckill(activityId.value)
     goResult()
   } catch (err) {
-    const error = err as BizError
-    if (error.code === 409) {
+    const code = (err as { code?: number }).code
+    if (code === 409) {
       uni.showToast({ title: '这一场你已经抢到过了', icon: 'none' })
       goResult()
-    } else if (error.code === 429) {
+    } else if (code === 429) {
       uni.showToast({ title: '手速太快啦，歇一秒再试', icon: 'none' })
-    } else if (error.code === 401) {
+    } else if (code === 401) {
       uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
       setTimeout(() => uni.navigateTo({ url: '/pages/login/login' }), 600)
     } else {
-      uni.showToast({ title: error.message || '抢购失败', icon: 'none' })
+      uni.showToast({ title: (err as Error).message || '抢购失败', icon: 'none' })
     }
   } finally {
     submitting.value = false
   }
-}
-
-function goResult() {
-  uni.redirectTo({ url: `/pages/seckill/result?activityId=${activityId.value}` })
 }
 
 onLoad((query) => {
@@ -163,20 +152,15 @@ onLoad((query) => {
 })
 
 onUnload(() => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+  if (pollTimer) clearInterval(pollTimer)
 })
 </script>
 
 <template>
   <view class="screen paper-grain">
     <AppNavBar back subtitle="Flash Sale" :title="activity?.goodsName || '活动详情'" />
-
     <view class="screen__body">
       <template v-if="activity">
-        <!-- 商品图：不铺满整屏，做成一张带边框的"展品窗口" -->
         <view class="media rise">
           <image
             v-if="activity.goodsImgUrl && !imgFailed"
@@ -188,15 +172,13 @@ onUnload(() => {
           <view v-else class="media__fallback paper-grain">
             <text class="media__fallback-mark num">{{ activity.goodsName?.slice(0, 1) }}</text>
           </view>
-
           <view class="media__status">
-            <text class="badge" :class="statusClass">{{ activity.statusText }}</text>
+            <text class="badge badge--acid">{{ activity.statusText }}</text>
           </view>
           <view class="media__stamp stamp">限量 {{ activity.seckillStock }} 份</view>
         </view>
 
-        <!-- 价格票根：中间一条虚线撕口，左右信息分栏 -->
-        <view class="pticket ticket rise" style="animation-delay: 60ms">
+        <view class="pticket ticket rise">
           <view class="pticket__left">
             <text class="overline">Seckill Price / 秒杀价</text>
             <view class="pticket__price">
@@ -204,9 +186,7 @@ onUnload(() => {
               <text class="pticket__int num">{{ price.int }}</text>
               <text class="pticket__dec num">.{{ price.dec }}</text>
             </view>
-            <text class="pticket__origin num">
-              原价 ¥{{ money(activity.originPrice) }} · 立省 ¥{{ saved }}
-            </text>
+            <text class="pticket__origin num">立省 ¥{{ saved }}</text>
           </view>
           <view class="pticket__split" />
           <view class="pticket__right">
@@ -216,8 +196,7 @@ onUnload(() => {
           </view>
         </view>
 
-        <!-- 倒计时 -->
-        <view class="panel cd-panel rise" style="animation-delay: 110ms">
+        <view class="panel cd-panel rise">
           <CountDown
             size="lg"
             :start-time="activity.startTime"
@@ -225,19 +204,10 @@ onUnload(() => {
             :status-text="activity.statusText"
             @finish="loadDetail"
           />
-          <text class="cd-panel__hint">
-            {{
-              activity.statusText === '未开始'
-                ? '开始后按钮会自动解锁，无需手动刷新'
-                : activity.statusText === '已结束'
-                  ? '本场活动已结束'
-                  : '库存实时同步自 Redis，页面每 3 秒自动刷新'
-            }}
-          </text>
+          <text class="cd-panel__hint">库存实时同步自 Redis，页面每 3 秒自动刷新</text>
         </view>
 
-        <!-- 库存消耗 -->
-        <view class="panel meter-panel rise" style="animation-delay: 150ms">
+        <view class="panel meter-panel rise">
           <view class="meter-panel__head">
             <text class="overline">Inventory / 库存消耗</text>
             <text class="meter-panel__pct num">{{ soldPercent }}%</text>
@@ -253,16 +223,11 @@ onUnload(() => {
           </view>
         </view>
 
-        <!-- 活动信息 -->
-        <view class="panel info rise" style="animation-delay: 190ms">
+        <view class="panel info rise">
           <text class="overline">Schedule / 活动信息</text>
           <view class="info__row">
             <text class="info__key">商品</text>
             <text class="info__val">{{ activity.goodsName }}</text>
-          </view>
-          <view v-if="activity.goodsTitle" class="info__row">
-            <text class="info__key">卖点</text>
-            <text class="info__val">{{ activity.goodsTitle }}</text>
           </view>
           <view class="info__row">
             <text class="info__key">开始</text>
@@ -274,8 +239,7 @@ onUnload(() => {
           </view>
         </view>
 
-        <!-- 规则 -->
-        <view class="panel rules rise" style="animation-delay: 230ms">
+        <view class="panel rules rise">
           <text class="overline">Rules / 抢购规则</text>
           <view v-for="(rule, index) in rules" :key="index" class="rules__row">
             <text class="rules__no num">{{ pad2(index + 1) }}</text>
@@ -283,16 +247,14 @@ onUnload(() => {
           </view>
         </view>
       </template>
-
-      <view v-else-if="loading" class="detail-skeleton">
-        <view class="skeleton detail-skeleton__media" />
-        <view class="skeleton detail-skeleton__line" />
-        <view class="skeleton detail-skeleton__block" />
+      <view v-else-if="loading" class="loading">
+        <view class="skeleton loading__media" />
+        <view class="skeleton loading__line" />
+        <view class="skeleton loading__block" />
       </view>
     </view>
 
-    <!-- 底部抢购条 -->
-    <view class="cta">
+    <view v-if="activity" class="cta">
       <view class="cta__info">
         <text class="cta__label overline">{{ cta.label }}</text>
         <text class="cta__sub num">{{ cta.sub }}</text>
@@ -315,7 +277,144 @@ onUnload(() => {
   padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
 }
 
-/* ---------- 展品窗口 ---------- */
+.cta {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  background: $paper;
+  border-top: 2rpx solid $line-strong;
+  padding: 18rpx 32rpx calc(18rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(18rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.cta__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+
+.cta__sub {
+  font-size: 24rpx;
+  color: $ink-soft;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cta__btn {
+  width: 300rpx;
+  flex: none;
+}
+
+.btn--hover {
+  opacity: 0.88;
+}
+
+.loading {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.loading__media {
+  height: 460rpx;
+  border-radius: $radius-lg;
+}
+
+.loading__line {
+  height: 56rpx;
+  width: 55%;
+}
+
+.loading__block {
+  height: 160rpx;
+  border-radius: $radius;
+}
+
+.panel {
+  margin-top: 24rpx;
+  padding: 26rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  background: $card;
+  border-radius: $radius-lg;
+  border: 2rpx solid $line;
+}
+
+.cd-panel__hint {
+  font-size: 22rpx;
+  color: $ink-mute;
+  line-height: 1.6;
+}
+
+.meter-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.meter-panel__pct {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $vermilion;
+}
+
+.meter-panel__foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 21rpx;
+  color: $ink-mute;
+}
+
+.info__row {
+  display: flex;
+  gap: 20rpx;
+  align-items: flex-start;
+}
+
+.info__key {
+  width: 84rpx;
+  flex: none;
+  font-size: 24rpx;
+  color: $ink-mute;
+}
+
+.info__val {
+  flex: 1;
+  font-size: 26rpx;
+  color: $ink;
+}
+
+.rules__row {
+  display: flex;
+  gap: 16rpx;
+  align-items: flex-start;
+}
+
+.rules__no {
+  width: 44rpx;
+  flex: none;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $vermilion;
+}
+
+.rules__text {
+  flex: 1;
+  font-size: 24rpx;
+  color: $ink-soft;
+  line-height: 1.6;
+}
+
 .media {
   position: relative;
   margin-top: 24rpx;
@@ -358,7 +457,6 @@ onUnload(() => {
   background: rgba(244, 241, 234, 0.94);
 }
 
-/* ---------- 价格票根 ---------- */
 .pticket {
   display: flex;
   align-items: stretch;
@@ -429,146 +527,5 @@ onUnload(() => {
 .pticket__stock-sub {
   font-size: 20rpx;
   color: $ink-mute;
-}
-
-/* ---------- 倒计时面板 ---------- */
-.panel {
-  margin-top: 24rpx;
-  padding: 26rpx 24rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.cd-panel__hint {
-  font-size: 22rpx;
-  color: $ink-mute;
-  line-height: 1.6;
-}
-
-/* ---------- 库存消耗 ---------- */
-.meter-panel__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.meter-panel__pct {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: $vermilion;
-}
-
-.meter-panel__foot {
-  display: flex;
-  justify-content: space-between;
-  font-size: 21rpx;
-  color: $ink-mute;
-}
-
-/* ---------- 活动信息 ---------- */
-.info__row {
-  display: flex;
-  gap: 20rpx;
-  align-items: flex-start;
-}
-
-.info__key {
-  width: 84rpx;
-  flex: none;
-  font-size: 24rpx;
-  color: $ink-mute;
-}
-
-.info__val {
-  flex: 1;
-  font-size: 26rpx;
-  color: $ink;
-}
-
-/* ---------- 规则 ---------- */
-.rules__row {
-  display: flex;
-  gap: 16rpx;
-  align-items: flex-start;
-}
-
-.rules__no {
-  width: 44rpx;
-  flex: none;
-  font-size: 22rpx;
-  font-weight: 700;
-  color: $vermilion;
-}
-
-.rules__text {
-  flex: 1;
-  font-size: 24rpx;
-  color: $ink-soft;
-  line-height: 1.6;
-}
-
-/* ---------- 骨架 ---------- */
-.detail-skeleton {
-  margin-top: 24rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-
-.detail-skeleton__media {
-  height: 460rpx;
-  border-radius: $radius-lg;
-}
-
-.detail-skeleton__line {
-  height: 60rpx;
-  width: 60%;
-}
-
-.detail-skeleton__block {
-  height: 160rpx;
-  border-radius: $radius;
-}
-
-/* ---------- 底部 CTA ---------- */
-.cta {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 80;
-  background: $paper;
-  border-top: 2rpx solid $line-strong;
-  padding: 18rpx 32rpx calc(18rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(18rpx + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.cta__info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2rpx;
-}
-
-.cta__sub {
-  font-size: 24rpx;
-  color: $ink-soft;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cta__btn {
-  width: 300rpx;
-  flex: none;
-}
-
-.btn--hover {
-  opacity: 0.88;
 }
 </style>

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import AppNavBar from '@/components/AppNavBar.vue'
 import { activityDetail, orderResult } from '@/api/seckill'
-import { BizError, isLogin } from '@/utils/request'
+import { isLogin, type BizError } from '@/utils/request'
 import { money } from '@/utils/format'
 import { RESULT_STATUS, type SeckillActivity, type SeckillResult } from '@/api/types'
 
