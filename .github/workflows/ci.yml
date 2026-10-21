@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一分支的新提交会取消上一次还在跑的构建
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: 后端构建与测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: "123456"
+          # 服务启动时自动建出测试库，测试脚本只负责建表
+          MYSQL_DATABASE: seckill_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p123456"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+      rabbitmq:
+        image: rabbitmq:4-management
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd="rabbitmq-diagnostics -q ping"
+          --health-interval=10s
+          --health-timeout=10s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: seckill-backend/pom.xml
+
+      - name: 编译并运行测试
+        working-directory: seckill-backend
+        run: mvn -B -ntp test
+
+      - name: 打包（跳过测试，确认可出包）
+        working-directory: seckill-backend
+        run: mvn -B -ntp -DskipTests package
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: seckill-backend/target/surefire-reports
+          if-no-files-found: ignore
+
+  admin:
+    name: 管理后台构建
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: seckill-admin/package-lock.json
+
+      - name: 安装依赖
+        working-directory: seckill-admin
+        run: npm ci
+
+      - name: 构建
+        working-directory: seckill-admin
+        run: npm run build
+
+  uniapp:
+    name: 用户端构建（H5 + 小程序）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: seckill-uniapp/package-lock.json
+
+      - name: 安装依赖
+        working-directory: seckill-uniapp
+        run: npm ci
+
+      - name: 构建 H5
+        working-directory: seckill-uniapp
+        run: npm run build:h5
+
+      - name: 构建微信小程序
+        working-directory: seckill-uniapp
+        run: npm run build:mp-weixin

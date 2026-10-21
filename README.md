@@ -1,5 +1,7 @@
 # 校园限量抢购平台
 
+[![CI](https://github.com/MTWWZ/seckill-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/MTWWZ/seckill-platform/actions/workflows/ci.yml)
+
 一个完整的校园限定商品秒杀系统：**Spring Boot 后端 + Vue3 管理后台 + uni-app 用户端**。
 
 核心要解决的问题是「高并发下的不超卖」：库存扣减放在 Redis 用 Lua 原子完成，订单落库交给 RabbitMQ 异步削峰，未支付订单到期自动取消并回补库存。
@@ -167,6 +169,20 @@ mvn test
 
 ---
 
+## 持续集成
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml)，push / PR 到 `main` 时触发，三个 job 并行：
+
+| Job | 内容 |
+|---|---|
+| `backend` | 起 MySQL 8 / Redis 7 / RabbitMQ 4 服务容器 → `mvn test`（10 个用例）→ `mvn -DskipTests package`，并上传 surefire 报告 |
+| `admin` | `npm ci` → `npm run build` |
+| `uniapp` | `npm ci` → `npm run build:h5` → `npm run build:mp-weixin` |
+
+后端测试连接的是服务容器里的独立实例，库名 `seckill_test` 由 `MYSQL_DATABASE` 自动创建，表由测试启动时自动建；Redis 使用 15 号库，与开发环境完全隔离。
+
+---
+
 ## API 速览
 
 统一响应结构，业务状态放在 `code` 里（HTTP 状态码仍为 200）：
@@ -288,20 +304,15 @@ return 0
 
 ```
 seckill-platform/
+├── .github/workflows/ci.yml    # GitHub Actions 持续集成
 ├── seckill-backend/            # Spring Boot 后端
-│   ├── sql/init.sql            # 建表 + 种子数据
-│   └── src/main/java/com/seckill/
-│       ├── annotation/         # @RateLimit
-│       ├── aspect/             # 限流切面
-│       ├── common/             # Result / CacheKeys / UserContext
-│       ├── config/             # RabbitMQ、WebMvc、MyBatisPlus
-│       ├── controller/         # 接口
-│       ├── dto/ entity/ vo/    # 请求体 / 实体 / 展示对象
-│       ├── exception/          # 业务异常 + 全局异常处理
-│       ├── interceptor/        # 登录拦截器
-│       ├── listener/           # 订单消费者 / 超时消费者
-│       ├── mapper/ service/    # 持久层与业务层
-│       └── task/               # 库存预热、超时关单补偿
+│   ├── sql/init.sql            # 重置演示环境（建表 + 种子数据）
+│   ├── sql/init-test.sql       # 创建测试库
+│   └── src/main/
+│       ├── java/com/seckill/   # 业务代码（分层说明见 docs/architecture.md）
+│       └── resources/
+│           ├── db/migration/   # Flyway 迁移脚本
+│           └── scripts/        # Lua 脚本（库存扣减、限流）
 ├── seckill-admin/              # Vue3 管理后台
 ├── seckill-uniapp/             # uni-app 用户端
 └── docs/architecture.md        # 架构与核心链路详解
