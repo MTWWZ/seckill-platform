@@ -8,6 +8,7 @@
 
 > 具体链路、并发正确性论证、故障兜底见 [docs/architecture.md](docs/architecture.md)。
 > 项目复盘、踩坑记录与面试要点见 [docs/project-summary.md](docs/project-summary.md)。
+> 按模块整理的面试问答见 [docs/interview-qa.md](docs/interview-qa.md)。
 
 ```
 用户端 (uni-app)  ──┐
