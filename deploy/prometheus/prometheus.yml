@@ -1,0 +1,14 @@
+# Prometheus 抓取配置
+# 目标地址用服务名 backend，仅在 docker compose 网络内可解析
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: seckill-backend
+    # Spring Boot Actuator 暴露的 Prometheus 格式端点
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["backend:8080"]
+        labels:
+          app: seckill-backend

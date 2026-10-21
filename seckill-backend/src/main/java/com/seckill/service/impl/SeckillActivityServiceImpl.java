@@ -13,12 +13,15 @@ import com.seckill.mapper.GoodsMapper;
 import com.seckill.mapper.SeckillActivityMapper;
 import com.seckill.service.SeckillActivityService;
 import com.seckill.vo.SeckillActivityVO;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +37,7 @@ public class SeckillActivityServiceImpl extends ServiceImpl<SeckillActivityMappe
 
     private final GoodsMapper goodsMapper;
     private final StringRedisTemplate redisTemplate;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public IPage<SeckillActivityVO> pageQuery(Integer pageNum, Integer pageSize) {
@@ -93,6 +97,7 @@ public class SeckillActivityServiceImpl extends ServiceImpl<SeckillActivityMappe
         }
         redisTemplate.opsForValue().set(CacheKeys.activityStock(activityId),
                 String.valueOf(activity.getSeckillStock()));
+        registerStockGauge(activityId);
     }
 
     @Override
@@ -111,8 +116,28 @@ public class SeckillActivityServiceImpl extends ServiceImpl<SeckillActivityMappe
                 redisTemplate.opsForValue().set(key, String.valueOf(activity.getSeckillStock()));
                 count++;
             }
+            registerStockGauge(activity.getId());
         }
         return count;
+    }
+
+    /**
+     * 把活动实时库存暴露成 Prometheus 指标：seckill_activity_stock{activityId="1"}
+     * <p>
+     * 用 Gauge 而不是每次抢购时主动上报，是因为库存会被并发修改，
+     * 抓取时现读 Redis 最准确，也不会给下单链路增加开销。
+     * 重复注册同一个 id+标签时 Micrometer 会返回已有指标，不会重复登记。
+     */
+    private void registerStockGauge(Long activityId) {
+        String key = CacheKeys.activityStock(activityId);
+        Supplier<Number> supplier = () -> {
+            String value = redisTemplate.opsForValue().get(key);
+            return value == null ? 0 : Double.parseDouble(value);
+        };
+        Gauge.builder("seckill_activity_stock", supplier)
+                .description("活动剩余的 Redis 实时库存")
+                .tag("activityId", String.valueOf(activityId))
+                .register(meterRegistry);
     }
 
     /** 实体 -> 展示对象：拼上商品信息和 Redis 实时库存 */

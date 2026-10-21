@@ -355,6 +355,18 @@ Redis 执行 Lua 时是单线程且不可中断，这是「判断 + 扣减」能
 | `/actuator/metrics` | 指标列表（http.server.requests 等） |
 | `/actuator/prometheus` | Prometheus 抓取格式 |
 
+自定义业务指标（Actuator 自带的指标覆盖不到）：
+
+| 指标 | 类型 | 实现位置 | 用途 |
+|---|---|---|---|
+| `seckill_order_result_total{result}` | Counter | `SeckillServiceImpl.countResult` | 区分 success / sold_out / repeat / not_ready / error，面板据此算成功率与失败原因 |
+| `seckill_activity_stock{activityId}` | Gauge | `SeckillActivityServiceImpl.registerStockGauge` | 抓取时现读 Redis，不增加下单链路开销 |
+| `seckill_queue_messages{queue}` | Gauge | `MetricsConfig` | 查询四个队列的积压，判断消费者是否跟得上 |
+
+> `http.server.requests` 默认只输出 summary（没有 `_bucket`），为了在 Grafana 里算 P95，需要在 `application.yml` 打开 `percentiles-histogram`。
+
+监控栈：`deploy/prometheus/prometheus.yml` 每 15 秒抓一次 `/actuator/prometheus`；Grafana 通过 `deploy/grafana/provisioning` 自动注册数据源与面板，启动零配置。
+
 关键日志（带订单号，便于串联一次下单的完整路径）：
 
 ```

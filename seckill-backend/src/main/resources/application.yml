@@ -97,3 +97,10 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      # 默认只暴露 summary，没有 _bucket，Grafana 就算不出 P95；
+      # 打开直方图后会有 http_server_requests_seconds_bucket
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms, 100ms, 200ms, 500ms, 1s

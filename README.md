@@ -74,6 +74,8 @@ docker compose down -v           # 连数据一起清掉
 | 管理后台 | http://localhost:8081 |
 | 后端接口 | http://localhost:8080 |
 | RabbitMQ 管理台 | http://localhost:15672（guest / guest） |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000（admin / admin） |
 
 几点说明：
 
@@ -208,6 +210,33 @@ mvn test
 
 ---
 
+## 监控面板
+
+后端通过 `/actuator/prometheus` 暴露指标，compose 已带 Prometheus + Grafana，数据源与面板都会自动加载，不用手工配置：
+
+| 入口 | 地址 |
+|---|---|
+| 面板 | http://localhost:3000 → Dashboards → Seckill → 秒杀平台监控 |
+| Prometheus | http://localhost:9090 |
+
+面板共 12 块：
+
+- **业务**：抢购请求 QPS（按结果分）、抢购结果分布、活动实时库存、RabbitMQ 队列积压
+- **接口**：HTTP QPS、P95 响应时间、5xx 错误率、状态码分布
+- **运行时**：JVM 堆内存、GC 暂停时间、HikariCP 连接数、CPU 使用率
+
+自定义指标（业务相关，Actuator 自带的覆盖不到）：
+
+| 指标 | 类型 | 说明 |
+|---|---|---|
+| `seckill_order_result_total{result}` | Counter | 抢购结果，`result` 区分 success / sold_out / repeat / not_ready / error |
+| `seckill_activity_stock{activityId}` | Gauge | 抓取时现读 Redis 的活动实时库存 |
+| `seckill_queue_messages{queue}` | Gauge | 四个队列的待消费消息数 |
+
+> P95 依赖 `application.yml` 里开启的 `percentiles-histogram`：Micrometer 默认只输出 summary，没有 `_bucket`，Grafana 就算不出分位数。
+
+---
+
 ## API 速览
 
 统一响应结构，业务状态放在 `code` 里（HTTP 状态码仍为 200）：
@@ -330,7 +359,10 @@ return 0
 ```
 seckill-platform/
 ├── .github/workflows/ci.yml    # GitHub Actions 持续集成
-├── docker-compose.yml          # 一键起 MySQL / Redis / RabbitMQ / 后端 / 管理后台
+├── docker-compose.yml          # 一键起 MySQL / Redis / RabbitMQ / 后端 / 管理后台 / 监控
+├── deploy/
+│   ├── prometheus/             # 抓取配置
+│   └── grafana/                # 数据源、面板 provisioning 与仪表盘 JSON
 ├── seckill-backend/            # Spring Boot 后端
 │   ├── Dockerfile              # 多阶段构建镜像
 │   ├── sql/init.sql            # 重置演示环境（建表 + 种子数据）

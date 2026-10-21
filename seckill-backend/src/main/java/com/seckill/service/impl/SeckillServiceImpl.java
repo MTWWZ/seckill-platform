@@ -16,6 +16,7 @@ import com.seckill.service.SeckillService;
 import com.seckill.vo.SeckillOrderVO;
 import com.seckill.vo.SeckillResultVO;
 import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -64,6 +65,7 @@ public class SeckillServiceImpl implements SeckillService {
     private final SeckillOrderMapper orderMapper;
     private final SeckillActivityMapper activityMapper;
     private final GoodsMapper goodsMapper;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public SeckillResultVO seckill(Long activityId) {
@@ -85,15 +87,19 @@ public class SeckillServiceImpl implements SeckillService {
                 String.valueOf(userId));
 
         if (result == null) {
+            countResult("error");
             throw new BusinessException(500, "秒杀失败，请稍后重试");
         }
         if (result == LUA_NOT_READY) {
+            countResult("not_ready");
             throw new BusinessException(400, "活动尚未就绪，请稍后再试");
         }
         if (result == LUA_NO_STOCK) {
+            countResult("sold_out");
             throw new BusinessException(400, "来晚了，库存已被抢光");
         }
         if (result == LUA_REPEAT) {
+            countResult("repeat");
             throw new BusinessException(409, "您已经抢购过了，每人限购一件");
         }
 
@@ -109,9 +115,11 @@ public class SeckillServiceImpl implements SeckillService {
         } catch (Exception e) {
             // 发消息失败：把库存和标记还回去，否则用户永远等不到订单（少卖）
             rollbackRedis(activityId, userId);
+            countResult("error");
             throw new BusinessException(500, "下单失败，请稍后重试");
         }
 
+        countResult("success");
         SeckillResultVO vo = new SeckillResultVO();
         vo.setActivityId(activityId);
         vo.setOrderNo(orderNo);
@@ -185,6 +193,11 @@ public class SeckillServiceImpl implements SeckillService {
     private void rollbackRedis(Long activityId, Long userId) {
         redisTemplate.opsForValue().increment(CacheKeys.activityStock(activityId));
         redisTemplate.opsForSet().remove(CacheKeys.activityUsers(activityId), String.valueOf(userId));
+    }
+
+    /** 抢购结果计数：给 Grafana 面板提供成功率 / 失败原因分布 */
+    private void countResult(String result) {
+        meterRegistry.counter("seckill_order_result", "result", result).increment();
     }
 
     private String generateOrderNo(Long userId, Long activityId) {

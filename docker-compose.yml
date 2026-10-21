@@ -9,9 +9,13 @@
 # 只想要中间件（本地跑后端连它们）：
 #   docker compose up -d mysql redis rabbitmq
 #
+# 只想要监控面板（后端已在本地 8080 跑）：
+#   需要把 deploy/prometheus/prometheus.yml 里的 targets 改成
+#   host.docker.internal:8080 后再执行 docker compose up -d prometheus grafana
+#
 # 注意：MySQL / Redis / RabbitMQ 的 5672 端口没有映射到宿主机，
-# 容器内部通过服务名互访；只有 15672 管理台、8080 后端、8081 管理后台对外开放，
 # 这样不会和你本机已经在跑的 3306 / 6379 / 5672 冲突。
+# 对外开放的端口：8081 管理后台、8080 后端、15672 MQ 管理台、9090 Prometheus、3000 Grafana。
 # ============================================================
 
 name: seckill-platform
@@ -99,6 +103,41 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: seckill-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      # 指标只留 7 天，本地演示够用，也不至于把磁盘吃满
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: seckill-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      TZ: Asia/Shanghai
+    volumes:
+      # 数据源与面板通过 provisioning 自动加载，启动即可看到「秒杀平台监控」
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
   admin:
     build:
       context: ./seckill-admin
@@ -113,3 +152,5 @@ volumes:
   mysql-data:
   redis-data:
   rabbitmq-data:
+  prometheus-data:
+  grafana-data:

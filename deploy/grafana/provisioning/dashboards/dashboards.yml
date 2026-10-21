@@ -1,0 +1,13 @@
+apiVersion: 1
+
+# 自动加载 dashboards 目录下的 JSON 面板
+providers:
+  - name: seckill
+    orgId: 1
+    folder: Seckill
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
