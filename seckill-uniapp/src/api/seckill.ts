@@ -26,3 +26,8 @@ export function orderResult(activityId: number, toast = false): Promise<SeckillR
 export function myOrders(): Promise<SeckillOrder[]> {
   return get<SeckillOrder[]>('/seckill/order/my')
 }
+
+/** 支付订单（演示用：后端直接把状态改成已支付） */
+export function payOrder(orderNo: string): Promise<void> {
+  return post<void>(`/seckill/order/${orderNo}/pay`)
+}

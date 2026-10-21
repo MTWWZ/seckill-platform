@@ -92,7 +92,9 @@ CREATE TABLE `t_seckill_order` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_order_no` (`order_no`),
     UNIQUE KEY `uk_user_activity` (`user_id`, `activity_id`),
-    KEY `idx_activity_id` (`activity_id`)
+    KEY `idx_activity_id` (`activity_id`),
+    -- 超时订单补偿任务按 status + create_time 扫描
+    KEY `idx_status_create` (`status`, `create_time`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '秒杀订单表';
 
 -- ------------------------------------------------------------

@@ -46,7 +46,7 @@ const headline = computed(() => {
 const describe = computed(() => {
   switch (stage.value) {
     case 'success':
-      return '订单已由消息队列异步生成，可在"我的订单"中查看'
+      return '订单已由消息队列异步生成，请在「我的订单」里完成支付；超时未支付会自动取消并释放库存'
     case 'failed':
       return result.value?.message || '本场库存已被抢完，下次再试试'
     case 'timeout':

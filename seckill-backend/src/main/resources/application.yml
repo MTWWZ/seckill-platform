@@ -56,6 +56,13 @@ mybatis-plus:
   # 自定义 XML 的存放位置（复杂 SQL 写在这里）
   mapper-locations: classpath*:/mapper/**/*.xml
 
+# 秒杀业务参数
+seckill:
+  order:
+    # 订单超时时长（分钟）：延迟队列的 TTL 与定时补偿任务都读这个值
+    # 注意：队列 TTL 是声明时写进 Broker 的，改完要先删掉旧队列才会生效
+    timeout-minutes: 15
+
 # JWT 配置
 jwt:
   # 签名密钥（生产环境请用环境变量注入，不要硬编码）

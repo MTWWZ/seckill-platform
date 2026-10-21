@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import AppNavBar from '@/components/AppNavBar.vue'
 import TabBar from '@/components/TabBar.vue'
-import { myOrders } from '@/api/seckill'
+import { myOrders, payOrder } from '@/api/seckill'
 import { clearAuth, getProfile, isLogin } from '@/utils/request'
 import { formatTime, money, moneyParts } from '@/utils/format'
 import type { SeckillOrder } from '@/api/types'
@@ -12,9 +12,15 @@ const loading = ref(false)
 const logged = ref(false)
 const nickname = ref('')
 const orders = ref<SeckillOrder[]>([])
+const paying = ref('')
 
+/** 累计成交只算已支付的，取消/待支付不该算进去 */
 const totalAmount = computed(() =>
-  money(orders.value.reduce((sum, order) => sum + Number(order.amount ?? 0), 0))
+  money(
+    orders.value
+      .filter((order) => order.status === 1)
+      .reduce((sum, order) => sum + Number(order.amount ?? 0), 0)
+  )
 )
 
 const pendingCount = computed(() => orders.value.filter((order) => order.status === 0).length)
@@ -65,6 +71,20 @@ function handleLogout() {
 
 function goDetail(order: SeckillOrder) {
   uni.navigateTo({ url: `/pages/seckill/detail?id=${order.activityId}` })
+}
+
+async function handlePay(order: SeckillOrder) {
+  if (paying.value) return
+  paying.value = order.orderNo
+  try {
+    await payOrder(order.orderNo)
+    uni.showToast({ title: '支付成功', icon: 'none' })
+    await load()
+  } catch {
+    // request 层已 toast
+  } finally {
+    paying.value = ''
+  }
 }
 
 onShow(load)
@@ -149,10 +169,22 @@ onPullDownRefresh(async () => {
                 <text class="order__goods">{{ order.goodsName || `商品 #${order.goodsId}` }}</text>
                 <text class="order__time num">{{ formatTime(order.createTime) }}</text>
               </view>
-              <view class="order__amount">
-                <text class="order__cur">¥</text>
-                <text class="order__int num">{{ moneyParts(order.amount).int }}</text>
-                <text class="order__dec num">.{{ moneyParts(order.amount).dec }}</text>
+              <view class="order__right">
+                <view class="order__amount">
+                  <text class="order__cur">¥</text>
+                  <text class="order__int num">{{ moneyParts(order.amount).int }}</text>
+                  <text class="order__dec num">.{{ moneyParts(order.amount).dec }}</text>
+                </view>
+                <view
+                  v-if="order.status === 0"
+                  class="order__pay"
+                  hover-class="order__pay--hover"
+                  @tap.stop="handlePay(order)"
+                >
+                  <text class="order__pay-text">
+                    {{ paying === order.orderNo ? '支付中…' : '去支付' }}
+                  </text>
+                </view>
               </view>
             </view>
           </view>
@@ -351,6 +383,31 @@ onPullDownRefresh(async () => {
   align-items: baseline;
   gap: 2rpx;
   flex: none;
+}
+
+.order__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10rpx;
+  flex: none;
+}
+
+.order__pay {
+  padding: 8rpx 26rpx;
+  border-radius: 999rpx;
+  background: $vermilion;
+}
+
+.order__pay--hover {
+  opacity: 0.86;
+}
+
+.order__pay-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.04em;
 }
 
 .order__cur {

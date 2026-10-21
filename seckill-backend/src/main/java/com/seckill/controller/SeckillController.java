@@ -2,6 +2,7 @@ package com.seckill.controller;
 
 import com.seckill.annotation.RateLimit;
 import com.seckill.common.Result;
+import com.seckill.service.SeckillOrderService;
 import com.seckill.service.SeckillService;
 import com.seckill.vo.SeckillOrderVO;
 import com.seckill.vo.SeckillResultVO;
@@ -26,6 +27,7 @@ import java.util.List;
 public class SeckillController {
 
     private final SeckillService seckillService;
+    private final SeckillOrderService orderService;
 
     /** 抢购（异步下单：立刻返回"排队中"，订单由消费者异步生成）
      *  限流：同一用户 1 秒内最多 5 次请求，挡住脚本刷单 */
@@ -45,5 +47,12 @@ public class SeckillController {
     @GetMapping("/order/my")
     public Result<List<SeckillOrderVO>> myOrders() {
         return Result.success(seckillService.myOrders());
+    }
+
+    /** 支付订单（演示用：直接标记已支付，接入真实支付时换成回调） */
+    @PostMapping("/order/{orderNo}/pay")
+    public Result<Void> pay(@PathVariable String orderNo) {
+        orderService.pay(orderNo);
+        return Result.success();
     }
 }

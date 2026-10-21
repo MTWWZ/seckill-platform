@@ -3,12 +3,14 @@ package com.seckill.listener;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.rabbitmq.client.Channel;
 import com.seckill.config.RabbitMQConfig;
+import com.seckill.dto.OrderTimeoutMessage;
 import com.seckill.dto.SeckillMessage;
 import com.seckill.entity.SeckillOrder;
 import com.seckill.mapper.SeckillOrderMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.messaging.handler.annotation.Header;
@@ -36,6 +38,7 @@ public class SeckillOrderConsumer {
     private static final int ORDER_STATUS_UNPAID = 0;
 
     private final SeckillOrderMapper orderMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     @RabbitListener(queues = RabbitMQConfig.SECKILL_ORDER_QUEUE)
     public void handleSeckillOrder(SeckillMessage message, Channel channel,
@@ -58,6 +61,16 @@ public class SeckillOrderConsumer {
             order.setAmount(message.getAmount());
             order.setStatus(ORDER_STATUS_UNPAID);
             orderMapper.insert(order);
+
+            // 订单落库后投一条延迟消息：15 分钟没支付就自动取消并回补库存。
+            // 这里失败不影响用户下单（订单已经生成了），定时任务会兜底扫描。
+            try {
+                rabbitTemplate.convertAndSend(RabbitMQConfig.SECKILL_EXCHANGE,
+                        RabbitMQConfig.SECKILL_DELAY_ROUTING_KEY,
+                        new OrderTimeoutMessage(message.getOrderNo(), message.getUserId(), message.getActivityId()));
+            } catch (Exception e) {
+                log.error("投递超时消息失败，将由定时任务兜底：orderNo={}", message.getOrderNo(), e);
+            }
 
             channel.basicAck(deliveryTag, false);
             log.info("秒杀订单已生成：orderNo={} userId={} activityId={}",
