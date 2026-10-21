@@ -70,7 +70,7 @@ onPullDownRefresh(async () => {
 
 <template>
   <view class="screen screen--tabbed paper-grain">
-    <AppNavBar title="限量抢购" subtitle="Campus Drop">
+    <AppNavBar title="限时抢购" subtitle="Flash Sale">
       <view v-if="logged" class="nav-user" hover-class="nav-user--hover" @tap="goOrders">
         <text class="nav-user__name">{{ nickname }}</text>
         <view class="nav-user__dot" />
@@ -84,7 +84,7 @@ onPullDownRefresh(async () => {
       <!-- Hero：不放整块深色，只用超大数字 + 两段细线做版式骨架 -->
       <view class="hero rise">
         <view class="hero__top">
-          <text class="overline">Campus Drop / 校园限定发售</text>
+          <text class="overline">Flash Sale / 限时抢购</text>
           <view class="stamp hero__stamp">LIMITED</view>
         </view>
 

@@ -1,8 +1,8 @@
-# 校园限量抢购平台
+# 限时抢购交易平台
 
 [![CI](https://github.com/MTWWZ/seckill-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/MTWWZ/seckill-platform/actions/workflows/ci.yml)
 
-一个完整的校园限定商品秒杀系统：**Spring Boot 后端 + Vue3 管理后台 + uni-app 用户端**。
+一个完整的限时抢购（Flash Sale）交易系统：**Spring Boot 后端 + Vue3 管理后台 + uni-app 用户端**。
 
 核心要解决的问题是「高并发下的不超卖」：库存扣减放在 Redis 用 Lua 原子完成，订单落库交给 RabbitMQ 异步削峰，未支付订单到期自动取消并回补库存。
 

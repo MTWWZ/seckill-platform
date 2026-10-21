@@ -171,13 +171,13 @@ onMounted(load)
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="商品名称" prop="name">
-          <el-input v-model="form.name" placeholder="例如：校园联名卫衣" />
+          <el-input v-model="form.name" placeholder="例如：便携露营灯" />
         </el-form-item>
         <el-form-item label="卖点标题">
-          <el-input v-model="form.title" placeholder="例如：校庆限定联名款" />
+          <el-input v-model="form.title" placeholder="例如：三档亮度 · IPX4 防水" />
         </el-form-item>
         <el-form-item label="分类">
-          <el-input v-model="form.category" placeholder="例如：服饰" />
+          <el-input v-model="form.category" placeholder="例如：户外" />
         </el-form-item>
         <el-form-item label="原价" prop="originPrice">
           <el-input-number v-model="form.originPrice" :min="0" :precision="2" :step="10" />

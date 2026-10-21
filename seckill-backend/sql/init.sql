@@ -1,5 +1,5 @@
 -- ============================================================
--- 校园限量抢购平台 - 数据库初始化脚本
+-- 限时抢购交易平台 - 数据库初始化脚本
 -- 执行方式：mysql -u root -p < init.sql
 -- 说明：脚本可重复执行（先删表再建表）
 -- ============================================================
@@ -101,18 +101,18 @@ CREATE TABLE `t_seckill_order` (
 -- 初始化数据：商品
 -- ------------------------------------------------------------
 INSERT INTO `t_goods` (`name`, `title`, `description`, `img_url`, `origin_price`, `stock`, `category`, `status`)
-VALUES ('校园联名卫衣', '校庆限定联名款', '校庆限定联名卫衣，限量发售，售完即止。',
-        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=campus%20limited%20edition%20hoodie%20product%20photo%20clean%20studio%20background&image_size=square',
-        299.00, 100, '服饰', 1),
-       ('限量款运动鞋', '联名限量配色', '校园联名限量配色运动鞋，全球限量 500 双。',
-        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=limited%20edition%20sneakers%20product%20photo%20clean%20background&image_size=square',
-        899.00, 50, '鞋靴', 1),
-       ('校园音乐节门票', '校园音乐节 VIP 票', '年度校园音乐节 VIP 区门票，限量 200 张。',
-        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=music%20festival%20ticket%20design%20flat%20lay&image_size=square',
-        199.00, 200, '演出', 1),
-       ('图书馆纪念徽章', '校图书馆限定徽章', '图书馆开馆纪念限定金属徽章。',
-        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=metal%20enamel%20pin%20badge%20product%20photo&image_size=square',
-        39.90, 300, '文创', 1);
+VALUES ('便携露营灯', '三档亮度 · IPX4 防水', '户外露营便携灯，三档亮度可调，续航 12 小时。',
+        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=portable%20camping%20lantern%20product%20photo%20clean%20studio%20background&image_size=square',
+        199.00, 100, '户外', 1),
+       ('无线降噪耳机', '40 小时续航 · 主动降噪', '头戴式无线降噪耳机，40 小时续航，支持多设备切换。',
+        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=wireless%20noise%20cancelling%20headphones%20product%20photo%20clean%20background&image_size=square',
+        899.00, 50, '数码', 1),
+       ('智能保温杯', '24 小时恒温 · 316 不锈钢', '智能温显保温杯，316 不锈钢内胆，24 小时恒温。',
+        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=smart%20thermos%20bottle%20product%20photo%20clean%20background&image_size=square',
+        159.00, 200, '生活', 1),
+       ('客制化机械键盘', '87 键 · 热插拔轴体', '87 键机械键盘，热插拔轴体，PBT 键帽。',
+        'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=mechanical%20keyboard%20product%20photo%20clean%20background&image_size=square',
+        399.00, 80, '数码', 1);
 
 -- ------------------------------------------------------------
 -- 初始化数据：用户

@@ -41,7 +41,7 @@ async function handleLogin() {
 <template>
   <div class="login-page">
     <el-card class="login-card">
-      <h2 class="title">校园限量抢购平台</h2>
+      <h2 class="title">限时抢购交易平台</h2>
       <p class="subtitle">管理后台</p>
       <el-form :model="form" label-position="top" @keyup.enter="handleLogin">
         <el-form-item label="用户名">

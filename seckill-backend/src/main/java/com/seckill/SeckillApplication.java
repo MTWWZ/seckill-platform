@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * 校园限量抢购平台 - 后端启动类
+ * 限时抢购交易平台 - 后端启动类
  */
 @SpringBootApplication
 @EnableScheduling

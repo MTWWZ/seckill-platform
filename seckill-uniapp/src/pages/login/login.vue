@@ -20,7 +20,7 @@ const DEMO = { username: 'student01', password: '123456' }
 
 const headline = computed(() => (mode.value === 'login' ? '欢迎回来' : '创建账号'))
 const subtitle = computed(() =>
-  mode.value === 'login' ? '登录后即可参与限量抢购' : '注册成功会自动登录，马上就能抢'
+  mode.value === 'login' ? '登录后即可参与限时抢购' : '注册成功会自动登录，马上就能抢'
 )
 
 const canSubmit = computed(() => form.value.username.length >= 4 && form.value.password.length >= 6)
@@ -87,7 +87,7 @@ function goBack() {
     <view class="screen__body">
       <!-- 标题 -->
       <view class="hero rise">
-        <text class="overline">Campus Limited Drop</text>
+        <text class="overline">Flash Sale Platform</text>
         <text class="hero__title">{{ headline }}</text>
         <text class="hero__sub">{{ subtitle }}</text>
         <view class="hero__bar" />

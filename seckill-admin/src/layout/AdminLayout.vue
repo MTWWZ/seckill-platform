@@ -20,7 +20,7 @@ async function handleLogout() {
 <template>
   <el-container class="layout">
     <el-aside width="200px" class="aside">
-      <div class="logo">限量抢购后台</div>
+      <div class="logo">限时抢购后台</div>
       <el-menu :default-active="activeMenu" router class="menu">
         <el-menu-item index="/goods">
           <el-icon><Goods /></el-icon>

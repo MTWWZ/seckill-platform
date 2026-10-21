@@ -1,7 +1,7 @@
 {
-  "name": "校园限量抢购",
+  "name": "限时抢购",
   "appid": "",
-  "description": "校园限量抢购平台 · 用户端",
+  "description": "限时抢购交易平台 · 用户端",
   "versionName": "1.0.0",
   "versionCode": "100",
   "transformPx": false,
@@ -46,6 +46,6 @@
       "mode": "hash",
       "base": "./"
     },
-    "title": "校园限量抢购"
+    "title": "限时抢购"
   }
 }

@@ -2,7 +2,7 @@
 const props = defineProps<{ current: 'index' | 'goods' | 'order' }>()
 
 const items = [
-  { key: 'index', en: 'DROP', zh: '抢购', path: '/pages/index/index' },
+  { key: 'index', en: 'FLASH', zh: '抢购', path: '/pages/index/index' },
   { key: 'goods', en: 'GOODS', zh: '商品', path: '/pages/goods/list' },
   { key: 'order', en: 'ORDERS', zh: '订单', path: '/pages/order/my' }
 ] as const
